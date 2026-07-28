@@ -72,13 +72,41 @@ fn search_by_query_book(state: tauri::State<'_, DbState>, query: String) -> Resu
     for book in book_iter {
         books.push(book.map_err(|e| e.to_string())?);
     }
-    if let Some(sql) = stmt.expanded_sql() {
-        println!("query: {} - answer: {:?}", sql, books);
-    } 
     
     Ok(books)
 
 
+}
+
+#[tauri::command]
+fn get_all_books(state: tauri::State<'_, DbState>) -> Result<(Vec<BookCard>), String> {
+let conn = state.conn.lock().map_err(|e| e.to_string())?;
+
+    let sql = String::from("SELECT id, isbn, title, author, status, cover_url FROM books");
+
+    let mut stmt = conn
+        .prepare(&sql)
+        .map_err(|e| e.to_string())?;
+
+        let book_iter = stmt
+        .query_map([], |row| {
+            Ok(BookCard {
+                id: row.get(0)?,
+                isbn: row.get(1)?,
+                title: row.get(2)?,
+                author: row.get(3)?,
+                status: row.get(4)?,
+                cover_url: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    
+    let mut books = Vec::new();
+    for book in book_iter {
+        books.push(book.map_err(|e| e.to_string())?);
+    } 
+    
+    Ok(books)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -106,7 +134,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![search_isbn_book, search_by_query_book])
+        .invoke_handler(tauri::generate_handler![search_isbn_book, search_by_query_book, get_all_books])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
