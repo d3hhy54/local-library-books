@@ -12,6 +12,7 @@ struct DbState {
 }
 
 #[derive(Serialize)]
+#[derive(Debug)]
 struct BookCard {
     id: i32,
     isbn: String,
@@ -19,11 +20,6 @@ struct BookCard {
     author: String,
     status: String,
     cover_url: String
-}
-
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
 #[tauri::command]
@@ -46,6 +42,43 @@ fn search_isbn_book(state: tauri::State<'_, DbState>, isbn: String) -> Result<Op
     });
 
     book_result.optional().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn search_by_query_book(state: tauri::State<'_, DbState>, query: String) -> Result<Vec<BookCard>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+
+    let query = format!("%{}%", query.to_lowercase());
+    let sql = String::from("SELECT id, isbn, title, author, status, cover_url FROM books WHERE title_lower LIKE ?1 OR author_lower LIKE ?1");
+
+    let mut stmt = conn
+        .prepare(&sql)
+        .map_err(|e| e.to_string())?;
+
+        let book_iter = stmt
+        .query_map([query], |row| {
+            Ok(BookCard {
+                id: row.get(0)?,
+                isbn: row.get(1)?,
+                title: row.get(2)?,
+                author: row.get(3)?,
+                status: row.get(4)?,
+                cover_url: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    
+    let mut books = Vec::new();
+    for book in book_iter {
+        books.push(book.map_err(|e| e.to_string())?);
+    }
+    if let Some(sql) = stmt.expanded_sql() {
+        println!("query: {} - answer: {:?}", sql, books);
+    } 
+    
+    Ok(books)
+
+
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -73,8 +106,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
-        .invoke_handler(tauri::generate_handler![search_isbn_book])
+        .invoke_handler(tauri::generate_handler![search_isbn_book, search_by_query_book])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

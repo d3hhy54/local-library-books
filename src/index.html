@@ -28,7 +28,7 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             padding: 40px;
             width: 100%;
-            max-width: 800px;
+            max-width: 900px;
         }
 
         h1 {
@@ -39,14 +39,39 @@
             font-weight: 300;
         }
 
-        .search-section {
+        .search-tabs {
             display: flex;
-            gap: 15px;
-            margin-bottom: 30px;
+            gap: 10px;
+            margin-bottom: 20px;
         }
 
-        #isbn-input {
-            flex: 1;
+        .tab-btn {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .search-section {
+            margin-bottom: 20px;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
             padding: 15px 20px;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
@@ -54,31 +79,28 @@
             transition: all 0.3s ease;
         }
 
-        #isbn-input:focus {
+        .search-input:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        #search-btn {
-            padding: 15px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        .search-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 20px;
+            pointer-events: none;
         }
 
-        #search-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        #search-btn:active {
-            transform: translateY(0);
+        .search-status {
+            font-size: 12px;
+            color: #999;
+            margin-top: 8px;
+            padding-left: 5px;
+            min-height: 18px;
         }
 
         .loading {
@@ -107,13 +129,54 @@
             100% { transform: rotate(360deg); }
         }
 
-        .result-card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
+        .results-container {
             display: none;
-            animation: slideIn 0.5s ease;
+        }
+
+        .results-container.active {
+            display: block;
+        }
+
+        .results-count {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .book-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .book-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .book-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .book-list::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 3px;
+        }
+
+        .book-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            animation: slideIn 0.3s ease;
+            transition: transform 0.2s ease;
+        }
+
+        .book-card:hover {
+            transform: translateX(5px);
         }
 
         @keyframes slideIn {
@@ -127,7 +190,95 @@
             }
         }
 
-        .result-card.active {
+        .book-card-content {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .book-card-cover {
+            flex-shrink: 0;
+            width: 100px;
+            height: 150px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .book-card-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .book-card-cover .no-cover-small {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #999;
+            font-size: 12px;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .book-card-info {
+            flex: 1;
+        }
+
+        .book-card-info h3 {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .book-card-info .author {
+            color: #666;
+            font-size: 1em;
+            margin-bottom: 8px;
+        }
+
+        .book-card-info .isbn-small {
+            color: #999;
+            font-size: 0.85em;
+            font-family: monospace;
+            margin-bottom: 8px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .status-read {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-unread {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-reading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        /* Стили для одиночной карточки */
+        .single-result {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: none;
+            animation: slideIn 0.5s ease;
+        }
+
+        .single-result.active {
             display: block;
         }
 
@@ -172,7 +323,7 @@
             margin-bottom: 10px;
         }
 
-        .book-info .author {
+        .book-info .author-large {
             color: #666;
             font-size: 1.2em;
             margin-bottom: 15px;
@@ -189,29 +340,6 @@
             font-size: 1.1em;
             font-family: monospace;
             margin-bottom: 15px;
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: 600;
-        }
-
-        .status-read {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-unread {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .status-reading {
-            background: #fff3cd;
-            color: #856404;
         }
 
         .error-message {
@@ -240,17 +368,19 @@
         }
 
         @media (max-width: 600px) {
-            .book-content {
+            .book-content,
+            .book-card-content {
                 flex-direction: column;
                 align-items: center;
             }
             
-            .search-section {
-                flex-direction: column;
-            }
-            
             .container {
                 padding: 20px;
+            }
+            
+            .book-card-cover {
+                width: 120px;
+                height: 180px;
             }
         }
     </style>
@@ -259,38 +389,54 @@
     <div class="container">
         <h1>📚 Библиотека</h1>
 
+        <div class="search-tabs">
+            <button class="tab-btn active" data-mode="isbn">Поиск по ISBN</button>
+            <button class="tab-btn" data-mode="query">Поиск по названию/автору</button>
+        </div>
+
         <div class="search-section">
-            <input 
-                type="text" 
-                id="isbn-input" 
-                placeholder="Введите ISBN книги (например: 9783161484100)" 
-            />
-            <button id="search-btn">Поиск</button>
+            <div class="search-input-wrapper">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    class="search-input"
+                    placeholder="Введите ISBN книги (например: 978-3-16-148410-0)" 
+                />
+                <span class="search-icon">🔍</span>
+            </div>
+            <div class="search-status" id="search-status"></div>
         </div>
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p>Поиск книги...</p>
+            <p>Поиск книг...</p>
         </div>
 
-        <div class="result-card" id="result-card">
+        <!-- Одиночный результат (для ISBN) -->
+        <div class="single-result" id="single-result">
             <div class="book-content">
                 <div class="book-cover">
-                    <img id="book-cover-img" src="" alt="Обложка книги" style="display: none;">
-                    <div id="no-cover" class="no-cover">Нет обложки</div>
+                    <img id="single-cover-img" src="" alt="Обложка книги" style="display: none;">
+                    <div id="single-no-cover" class="no-cover">Нет обложки</div>
                 </div>
                 <div class="book-info">
-                    <h2 id="book-title"></h2>
-                    <div class="author" id="book-author"></div>
+                    <h2 id="single-title"></h2>
+                    <div class="author-large" id="single-author"></div>
                     <div class="isbn-label">ISBN:</div>
-                    <div class="isbn" id="book-isbn"></div>
-                    <div id="book-status"></div>
+                    <div class="isbn" id="single-isbn"></div>
+                    <div id="single-status"></div>
                 </div>
             </div>
         </div>
 
+        <!-- Список результатов (для поиска по запросу) -->
+        <div class="results-container" id="results-container">
+            <div class="results-count" id="results-count"></div>
+            <div class="book-list" id="book-list"></div>
+        </div>
+
         <div class="no-result" id="no-result">
-            <p>Книга с таким ISBN не найдена</p>
+            <p id="no-result-text">Книги не найдены</p>
         </div>
 
         <div class="error-message" id="error-message"></div>
@@ -298,6 +444,10 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            let currentMode = 'isbn';
+            let debounceTimer = null;
+            let abortController = null;
+            
             // Проверяем доступность Tauri API
             console.log('Tauri API доступен:', !!window.__TAURI__);
             
@@ -325,61 +475,114 @@
                 throw new Error('Tauri API недоступен');
             }
             
-            // Функция для поиска книги по ISBN
-            async function searchBook() {
-                const isbn = document.getElementById('isbn-input').value.trim();
+            // Переключение режимов поиска
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentMode = btn.dataset.mode;
+                    
+                    const input = document.getElementById('search-input');
+                    if (currentMode === 'isbn') {
+                        input.placeholder = 'Введите ISBN книги (например: 978-3-16-148410-0)';
+                    } else {
+                        input.placeholder = 'Введите название или автора книги';
+                    }
+                    
+                    // Очищаем поле и результаты при переключении
+                    input.value = '';
+                    hideAll();
+                    updateStatus('');
+                });
+            });
+            
+            // Функция для выполнения поиска
+            async function performSearch(query) {
+                // Отменяем предыдущий запрос если есть
+                if (abortController) {
+                    abortController.abort();
+                }
+                abortController = new AbortController();
                 
-                if (!isbn) {
-                    showError('Пожалуйста, введите ISBN');
+                if (!query) {
+                    hideAll();
+                    updateStatus('');
                     return;
                 }
                 
+                updateStatus('Поиск...');
                 showLoading(true);
                 hideAll();
                 
                 try {
                     const invoke = await getInvoke();
-                    const result = await invoke('search_isbn_book', { isbn: isbn });
+                    let result;
                     
-                    hideLoading();
-                    
-                    if (result) {
-                        displayBook(result);
+                    if (currentMode === 'isbn') {
+                        result = await invoke('search_isbn_book', { isbn: query });
+                        
+                        hideLoading();
+                        
+                        if (result) {
+                            displaySingleBook(result);
+                            updateStatus('Книга найдена');
+                        } else {
+                            showNoResult('Книга с таким ISBN не найдена');
+                            updateStatus('Ничего не найдено');
+                        }
                     } else {
-                        showNoResult();
+                        result = await invoke('search_by_query_book', { query: query });
+                        
+                        hideLoading();
+                        
+                        if (result && result.length > 0) {
+                            displayBookList(result);
+                            updateStatus(`Найдено книг: ${result.length}`);
+                        } else {
+                            showNoResult('Книги по вашему запросу не найдены');
+                            updateStatus('Ничего не найдено');
+                        }
                     }
                 } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.log('Запрос отменен');
+                        return;
+                    }
                     console.error('Ошибка поиска:', error);
                     hideLoading();
                     showError('Ошибка при поиске: ' + error.message);
+                    updateStatus('Ошибка поиска');
                 }
             }
             
-            function displayBook(book) {
-                const card = document.getElementById('result-card');
-                const img = document.getElementById('book-cover-img');
-                const noCover = document.getElementById('no-cover');
+            // Debounce функция
+            function debounceSearch(query) {
+                clearTimeout(debounceTimer);
                 
-                document.getElementById('book-title').textContent = book.title;
-                document.getElementById('book-author').textContent = book.author;
-                document.getElementById('book-isbn').textContent = book.isbn;
-                
-                // Отображение статуса
-                const statusElement = document.getElementById('book-status');
-                let statusClass = 'status-unread';
-                let statusText = 'Не прочитано';
-                
-                if (book.status === 'Прочитано') {
-                    statusClass = 'status-read';
-                    statusText = 'Прочитано';
-                } else if (book.status === 'Читаю') {
-                    statusClass = 'status-reading';
-                    statusText = 'Читаю';
+                if (currentMode === 'isbn') {
+                    // Для ISBN - более длительная задержка, так как это точный поиск
+                    debounceTimer = setTimeout(() => performSearch(query), 500);
+                } else {
+                    // Для поиска по названию - меньшая задержка для отзывчивости
+                    debounceTimer = setTimeout(() => performSearch(query), 300);
                 }
+            }
+            
+            // Отображение одиночной книги
+            function displaySingleBook(book) {
+                const container = document.getElementById('single-result');
+                const img = document.getElementById('single-cover-img');
+                const noCover = document.getElementById('single-no-cover');
                 
-                statusElement.innerHTML = `<span class="status-badge ${statusClass}">${statusText}</span>`;
+                document.getElementById('single-title').textContent = book.title;
+                document.getElementById('single-author').textContent = book.author;
+                document.getElementById('single-isbn').textContent = book.isbn;
                 
-                // Отображение обложки
+                // Статус
+                const statusElement = document.getElementById('single-status');
+                statusElement.innerHTML = createStatusBadge(book.status);
+                
+                // Обложка
                 if (book.cover_url && book.cover_url.trim()) {
                     img.src = book.cover_url;
                     img.style.display = 'block';
@@ -394,7 +597,76 @@
                     noCover.style.display = 'flex';
                 }
                 
-                card.classList.add('active');
+                container.classList.add('active');
+            }
+            
+            // Отображение списка книг
+            function displayBookList(books) {
+                const container = document.getElementById('results-container');
+                const countElement = document.getElementById('results-count');
+                const listElement = document.getElementById('book-list');
+                
+                countElement.textContent = `Найдено книг: ${books.length}`;
+                listElement.innerHTML = '';
+                
+                books.forEach((book, index) => {
+                    const bookCard = createBookCard(book, index);
+                    listElement.appendChild(bookCard);
+                });
+                
+                container.classList.add('active');
+            }
+            
+            // Создание карточки книги для списка
+            function createBookCard(book, index) {
+                const card = document.createElement('div');
+                card.className = 'book-card';
+                card.style.animationDelay = `${index * 0.05}s`;
+                
+                card.innerHTML = `
+                    <div class="book-card-content">
+                        <div class="book-card-cover">
+                            ${book.cover_url && book.cover_url.trim() 
+                                ? `<img src="${book.cover_url}" alt="Обложка" onerror="this.parentElement.innerHTML='<div class=\\'no-cover-small\\'>Нет обложки</div>'">` 
+                                : '<div class="no-cover-small">Нет обложки</div>'}
+                        </div>
+                        <div class="book-card-info">
+                            <h3>${escapeHtml(book.title)}</h3>
+                            <div class="author">${escapeHtml(book.author)}</div>
+                            <div class="isbn-small">ISBN: ${escapeHtml(book.isbn)}</div>
+                            ${createStatusBadge(book.status)}
+                        </div>
+                    </div>
+                `;
+                
+                return card;
+            }
+            
+            // Создание бейджа статуса
+            function createStatusBadge(status) {
+                let statusClass = 'status-unread';
+                let statusText = 'Не прочитано';
+                
+                if (status === 'Прочитано') {
+                    statusClass = 'status-read';
+                    statusText = 'Прочитано';
+                } else if (status === 'Читаю') {
+                    statusClass = 'status-reading';
+                    statusText = 'Читаю';
+                }
+                
+                return `<span class="status-badge ${statusClass}">${statusText}</span>`;
+            }
+            
+            // Экранирование HTML
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            function updateStatus(message) {
+                document.getElementById('search-status').textContent = message;
             }
             
             function showLoading(show) {
@@ -414,22 +686,39 @@
                 }, 5000);
             }
             
-            function showNoResult() {
-                document.getElementById('no-result').classList.add('active');
+            function showNoResult(message) {
+                const noResult = document.getElementById('no-result');
+                document.getElementById('no-result-text').textContent = message;
+                noResult.classList.add('active');
             }
             
             function hideAll() {
-                document.getElementById('result-card').classList.remove('active');
+                document.getElementById('single-result').classList.remove('active');
+                document.getElementById('results-container').classList.remove('active');
                 document.getElementById('no-result').classList.remove('active');
                 document.getElementById('error-message').classList.remove('active');
             }
             
-            // Назначаем обработчики событий
-            document.getElementById('search-btn').addEventListener('click', searchBook);
+            // Обработчик ввода текста
+            const searchInput = document.getElementById('search-input');
             
-            document.getElementById('isbn-input').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    searchBook();
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.trim();
+                debounceSearch(query);
+            });
+            
+            // Очистка при фокусе (опционально)
+            searchInput.addEventListener('focus', () => {
+                if (searchInput.value.trim()) {
+                    debounceSearch(searchInput.value.trim());
+                }
+            });
+            
+            // Очистка таймера при уходе со страницы
+            window.addEventListener('beforeunload', () => {
+                clearTimeout(debounceTimer);
+                if (abortController) {
+                    abortController.abort();
                 }
             });
         });
