@@ -22,6 +22,21 @@ struct BookCard {
     cover_url: String
 }
 
+#[derive(Serialize)]
+struct BookPage {
+    id: i32,
+    isbn: String,
+    title: String,
+    author: String,
+    status: String, // потом добавлю enums
+    publisher: Option<String>,
+    series: Option<String>,
+    binding: Option<String>,
+    page_count: Option<i32>,
+    section: Option<String>,
+    cover_url: String
+}
+
 #[tauri::command]
 fn search_isbn_book(state: tauri::State<'_, DbState>, isbn: String) -> Result<Option<BookCard>, String> {
    let conn = state.conn.lock().map_err(|e| e.to_string())?;
@@ -55,7 +70,7 @@ fn search_by_query_book(state: tauri::State<'_, DbState>, query: String) -> Resu
         .prepare(&sql)
         .map_err(|e| e.to_string())?;
 
-        let book_iter = stmt
+    let book_iter = stmt
         .query_map([query], |row| {
             Ok(BookCard {
                 id: row.get(0)?,
@@ -79,8 +94,8 @@ fn search_by_query_book(state: tauri::State<'_, DbState>, query: String) -> Resu
 }
 
 #[tauri::command]
-fn get_all_books(state: tauri::State<'_, DbState>) -> Result<(Vec<BookCard>), String> {
-let conn = state.conn.lock().map_err(|e| e.to_string())?;
+fn get_all_books(state: tauri::State<'_, DbState>) -> Result<Vec<BookCard>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
 
     let sql = String::from("SELECT id, isbn, title, author, status, cover_url FROM books");
 
@@ -88,7 +103,7 @@ let conn = state.conn.lock().map_err(|e| e.to_string())?;
         .prepare(&sql)
         .map_err(|e| e.to_string())?;
 
-        let book_iter = stmt
+    let book_iter = stmt
         .query_map([], |row| {
             Ok(BookCard {
                 id: row.get(0)?,
@@ -107,6 +122,35 @@ let conn = state.conn.lock().map_err(|e| e.to_string())?;
     } 
     
     Ok(books)
+}
+
+#[tauri::command]
+fn get_id_book(state: tauri::State<'_, DbState>, id: i32) -> Result<Option<BookPage>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+
+    let sql = String::from("SELECT * FROM books WHERE id = ?1");
+
+    let mut stmt = conn
+        .prepare(&sql)
+        .map_err(|e| e.to_string())?;
+
+    let book_result = stmt.query_row([id], |row| {
+        Ok(BookPage {
+            id: row.get(0)?,
+            isbn: row.get(1)?,
+            title: row.get(2)?,
+            author: row.get(3)?,
+            status: row.get(4)?, // потом добавлю enums
+            publisher: row.get(5)?,
+            series: row.get(6)?,
+            binding: row.get(7)?,
+            page_count: row.get(8)?,
+            section: row.get(9)?,
+            cover_url: row.get(10)?
+        })
+    });
+    
+    book_result.optional().map_err(|e| e.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -134,7 +178,12 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![search_isbn_book, search_by_query_book, get_all_books])
+        .invoke_handler(tauri::generate_handler![
+            search_isbn_book, 
+            search_by_query_book, 
+            get_all_books,
+            get_id_book
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
