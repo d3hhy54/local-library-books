@@ -3,103 +3,142 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Местная Библиотека</title>
+  <title>Каталог Книг</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <!-- Навигационная панель -->
-  <header class="navbar">
-    <div class="logo" onclick="showScreen('library-view')">📚 Книжная Полка</div>
-    <div class="nav-actions">
-      <input type="text" id="search-input" placeholder="Поиск по названию или автору...">
-      <button class="btn btn-primary" onclick="showScreen('add-book-view')">➕ Добавить книгу</button>
-    </div>
-  </header>
-
-  <main class="content">
-    
-    <!-- ЭКРАН 1: ГЛАВНАЯ ВИТРИНА КНИГ -->
-    <section id="library-view" class="screen active">
-      <h2>Мои Книги</h2>
-      <div id="books-grid" class="books-grid">
-        <!-- Карточки книг вставляются через JS -->
+  <div class="app-container">
+    <!-- Боковая панель -->
+    <aside class="sidebar">
+      <h2>Библиотека</h2>
+      
+      <!-- Поиск -->
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="Поиск по названию или автору...">
       </div>
-    </section>
 
-    <!-- ЭКРАН 2: ДОБАВЛЕНИЕ И ПАРСИНГ КНИГИ -->
-    <section id="add-book-view" class="screen">
-      <div class="card form-card">
-        <h2>Добавить новую книгу</h2>
-        <div class="search-bar">
-          <input type="text" id="isbn-search" placeholder="Введите ISBN для парсинга...">
-          <button class="btn btn-secondary" onclick="parseBookByIsbn()">Найти на Буквоеде</button>
+      <!-- Кнопка добавления -->
+      <button id="open-add-modal-btn" class="btn btn-primary">+ Добавить книгу</button>
+
+      <!-- Динамические фильтры -->
+      <div class="filters-container">
+        <h3>Фильтры</h3>
+        <div id="dynamic-filters">
+          <!-- Сюда JS вставит группы фильтров -->
         </div>
-        <div id="parse-loader" class="loader hidden">Ищем книгу и загружаем данные...</div>
-
-        <!-- Форма добавления (заполняется автоматически после парсинга или вручную) -->
-        <form id="book-form" onsubmit="submitBook(event)" class="book-form hidden">
-          <div class="form-group">
-            <label>ISBN</label>
-            <input type="text" id="form-isbn" required>
-          </div>
-          <div class="form-group">
-            <label>Название</label>
-            <input type="text" id="form-title" required>
-          </div>
-          <div class="form-group">
-            <label>Автор</label>
-            <input type="text" id="form-author" required>
-          </div>
-          <div class="form-group">
-            <label>Статус</label>
-            <select id="form-status">
-              <option value="Хочу прочитать">Хочу прочитать</option>
-              <option value="Читаю">Читаю</option>
-              <option value="Прочитано">Прочитано</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Издательство</label>
-            <input type="text" id="form-publisher">
-          </div>
-          <div class="form-group">
-            <label>Серия</label>
-            <input type="text" id="form-series">
-          </div>
-          <div class="form-group">
-            <label>Переплет</label>
-            <input type="text" id="form-binding">
-          </div>
-          <div class="form-group">
-            <label>Кол-во страниц</label>
-            <input type="text" id="form-pages">
-          </div>
-          <div class="form-group">
-            <label>Раздел</label>
-            <input type="text" id="form-section">
-          </div>
-          <div class="form-group">
-            <label>Ссылка или путь к обложке</label>
-            <input type="text" id="form-cover" required>
-          </div>
-          <button type="submit" class="btn btn-success btn-block">Сохранить книгу в базу</button>
-        </form>
+        <button id="reset-filters-btn" class="btn btn-secondary">Сбросить фильтры</button>
       </div>
-    </section>
+    </aside>
 
-  </main>
+    <!-- Основной контент -->
+    <main class="main-content">
+      <div id="books-grid" class="books-grid">
+        <!-- Сюда рендерятся карточки BookCard -->
+      </div>
+      
+      <!-- Индикатор загрузки / Скролла -->
+      <div id="loading-trigger" class="loading-trigger">
+        <span class="spinner"></span> Загрузка книг...
+      </div>
+    </main>
+  </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: ДЕТАЛЬНЫЙ ПРОСМОТР КНИГИ -->
-  <div id="book-modal" class="modal">
+  <!-- МОДАЛЬНОЕ ОКНО: Детальный просмотр книги (BookPage) -->
+  <div id="book-details-modal" class="modal">
     <div class="modal-content">
-      <span class="close-button" onclick="closeModal()">&times;</span>
-      <div class="modal-body" id="modal-book-details">
-        <!-- Детали книги через JS -->
+      <span class="close-btn" data-modal="book-details-modal">&times;</span>
+      <div class="book-details-layout">
+        <div class="details-cover">
+          <img id="detail-cover-img" src="" alt="Обложка">
+        </div>
+        <div class="details-info">
+          <h2 id="detail-title"></h2>
+          <p class="author" id="detail-author"></p>
+          <hr>
+          <table class="info-table">
+            <tr id="row-isbn"><th>ISBN:</th><td id="detail-isbn"></td></tr>
+            <tr id="row-status"><th>Статус:</th><td id="detail-status"></td></tr>
+            <tr id="row-publisher"><th>Издательство:</th><td id="detail-publisher"></td></tr>
+            <tr id="row-series"><th>Серия:</th><td id="detail-series"></td></tr>
+            <tr id="row-binding"><th>Переплет:</th><td id="detail-binding"></td></tr>
+            <tr id="row-pages"><th>Кол-во страниц:</th><td id="detail-pages"></td></tr>
+            <tr id="row-section"><th>Раздел:</th><td id="detail-section"></td></tr>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 
-  <script src="main.js"></script>
+  <!-- МОДАЛЬНОЕ ОКНО: Добавление новой книги -->
+  <div id="add-book-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" data-modal="add-book-modal">&times;</span>
+      <h2>Добавить новую книгу</h2>
+      
+      <!-- Парсинг по ISBN -->
+      <div class="parse-section">
+        <input type="text" id="parse-isbn-input" placeholder="Введите ISBN для автозаполнения">
+        <button id="parse-btn" class="btn">Найти в сети</button>
+      </div>
+      <div id="parse-error" class="error-msg"></div>
+
+      <hr>
+
+      <!-- Форма добавления -->
+      <form id="add-book-form" class="book-form">
+        <div class="form-group">
+          <label>ISBN *</label>
+          <input type="text" name="isbn" required>
+        </div>
+        <div class="form-group">
+          <label>Название *</label>
+          <input type="text" name="title" required>
+        </div>
+        <div class="form-group">
+          <label>Автор *</label>
+          <input type="text" name="author" required>
+        </div>
+        <div class="form-group">
+          <label>Статус *</label>
+          <input type="text" name="status" value="Не прочитано" required>
+        </div>
+        <div class="form-group">
+          <label>Ссылка или Путь к обложке *</label>
+          <input type="text" name="cover_url" placeholder="https://... или data:image или путь к файлу" required>
+        </div>
+        <div class="form-group">
+          <label>Издательство</label>
+          <input type="text" name="publisher">
+        </div>
+        <div class="form-group">
+          <label>Серия</label>
+          <input type="text" name="series">
+        </div>
+        <div class="form-group">
+          <label>Переплет</label>
+          <input type="text" name="binding">
+        </div>
+        <div class="form-group">
+          <label>Количество страниц</label>
+          <input type="text" name="page_count">
+        </div>
+        <div class="form-group">
+          <label>Раздел</label>
+          <input type="text" name="section">
+        </div>
+
+        <button type="submit" class="btn btn-primary submit-btn">Сохранить в базу</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Подключаем API Tauri v2 из глобального контекста window -->
+  <script>
+    // В Tauri v2 при core_init функции доступны в window.__TAURI__.core
+    window.tauriInvoke = window.__TAURI__?.core?.invoke;
+    window.convertFileSrc = window.__TAURI__?.core?.convertFileSrc;
+  </script>
+  <script src="app.js"></script>
 </body>
 </html>

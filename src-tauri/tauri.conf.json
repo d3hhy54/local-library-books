@@ -1,7 +1,7 @@
 {
   "$schema": "https://tauri/app",
   "productName": "local-library-books",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "identifier": "com.d3hhy54.local-library-books",
   "build": {
     "frontendDist": "../src"
@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "local-library-books",
+        "title": "Локальная библиотека",
         "width": 800,
         "height": 600
       }

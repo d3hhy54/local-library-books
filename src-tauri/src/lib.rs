@@ -1,84 +1,22 @@
-mod parser;
-mod structs;
+pub mod parser;
+pub mod structs;
+pub mod utils;
 
-use structs::*;
-use parser::parse_bookvoed_book;
+use crate::structs::*;
+use crate::parser::*;
+use crate::utils::*;
 
 use std::fs;
 use std::sync::Mutex;
 
-use base64::prelude::*;
 use tauri::Manager;
-use rusqlite::{OptionalExtension, Connection, Result};
+use rusqlite::{OptionalExtension, Connection, Result, params_from_iter};
 
-use crate::parser::download_image;
-
-fn save_cover_from_data_url(
-    state: &AppState,
-    data_url: &str,
-    isbn: &str,
-) -> Result<String, String> {
-    // Парсим Data URL: data:image/jpeg;base64,/9j/4AAQSkZJRg...
-    let parts: Vec<&str> = data_url.split(',').collect();
-    if parts.len() != 2 {
-        return Err("Неверный формат Data URL".to_string());
-    }
-    
-    // Получаем расширение из MIME типа
-    let mime_part = parts[0];
-    let ext = if mime_part.contains("jpeg") || mime_part.contains("jpg") {
-        "jpg"
-    } else if mime_part.contains("png") {
-        "png"
-    } else if mime_part.contains("gif") {
-        "gif"
-    } else if mime_part.contains("webp") {
-        "webp"
-    } else {
-        "jpg" // по умолчанию
-    };
-    
-    // Декодируем base64
-    let base64_data = parts[1];
-    let decoded = BASE64_STANDARD.decode(base64_data)
-        .map_err(|e| format!("Ошибка декодирования base64: {}", e))?;
-    
-    // Сохраняем файл
-    let mut cover_path = state.cover_path.clone();
-    let filename = format!("{}.{}", isbn, ext);
-    cover_path.push(&filename);
-    
-    std::fs::write(&cover_path, decoded)
-        .map_err(|e| format!("Ошибка сохранения файла: {}", e))?;
-
-    let file = match cover_path.to_str().map(|s| s.to_string()){
-        Some(file) => file,
-        None => return Err("Что то не так с файлом".to_string())
-    };
-    
-    Ok(format!("{}", file))
-}
-
-#[tauri::command(rename_all="camelCase")]
-fn save_file_to_covers(state: tauri::State<'_, AppState>, file_path: &str, isbn: &str) -> Result<String, String> {
-    let covers_dir = &state.cover_path;
-    
-    let extension = std::path::Path::new(&file_path)
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .unwrap_or("jpg");
-    
-    let file_name = format!("{}.{}", isbn, extension);
-    let dest_path = covers_dir.join(&file_name);
-    
-    std::fs::copy(&file_path, &dest_path).map_err(|e| e.to_string())?;
-    
-    println!("Файл скопирован в: {:?}", dest_path);
-    
-    Ok(file_name)
-}
 #[tauri::command]
-fn select_from_isbn_book(state: tauri::State<'_, AppState>, isbn: String) -> Result<Option<BookCard>, String> {
+fn select_from_isbn_book(
+    state: tauri::State<'_, AppState>, 
+    isbn: String
+) -> Result<Option<BookCard>, String> {
    let conn = state.conn.lock().map_err(|e| e.to_string())?;
    
    let mut stmt = conn
@@ -100,18 +38,55 @@ fn select_from_isbn_book(state: tauri::State<'_, AppState>, isbn: String) -> Res
 }
 
 #[tauri::command]
-fn search_by_query_book(state: tauri::State<'_, AppState>, query: String) -> Result<Vec<BookCard>, String> {
+fn search_by_query_book(
+    state: tauri::State<'_, AppState>, 
+    query: String, 
+    filters: Option<Filters>,
+    limit: Option<i32>,
+    offset: Option<i32>
+) -> Result<Vec<BookCard>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
 
-    let query = format!("%{}%", query.to_lowercase());
-    let sql = String::from("SELECT id, isbn, title, author, status, cover_url FROM books WHERE title_lower LIKE ?1 OR author_lower LIKE ?1");
+    let query_param = format!("%{}%", query.to_lowercase());
+    
+    let base_sql = "SELECT id, isbn, title, author, status, cover_url FROM books WHERE (title_lower LIKE ?1 OR author_lower LIKE ?1)";
+
+    let mut final_args = vec![&query_param];
+
+    let sql = if let Some(ref f) = filters.as_ref() {
+        let (filters_query, query_args) = from_filters_to_query_with_args(f);
+        
+        if filters_query.is_empty() {
+            base_sql.to_string()
+        } else {
+            final_args.extend(query_args);
+            format!("{} AND {}", base_sql, filters_query)
+        }
+    } else {
+        base_sql.to_string()
+    };
+
+    let limit = match limit {
+        Some(l) => l.to_string(),
+        None => "30".to_string()
+    };
+
+    let offset = match offset {
+        Some(o) => o.to_string(),
+        None => "0".to_string()
+    };
+
+    let sql = format!("{} ORDER BY title ASC LIMIT ? OFFSET ?", sql);
+    final_args.push(&limit);
+    final_args.push(&offset);
+    
 
     let mut stmt = conn
         .prepare(&sql)
         .map_err(|e| e.to_string())?;
 
     let book_iter = stmt
-        .query_map([query], |row| {
+        .query_map(params_from_iter(final_args.iter()), |row| {
             Ok(BookCard {
                 id: row.get(0)?,
                 isbn: row.get(1)?,
@@ -127,6 +102,8 @@ fn search_by_query_book(state: tauri::State<'_, AppState>, query: String) -> Res
     for book in book_iter {
         books.push(book.map_err(|e| e.to_string())?);
     }
+
+    println!("{}", &sql);
     
     Ok(books)
 
@@ -134,17 +111,43 @@ fn search_by_query_book(state: tauri::State<'_, AppState>, query: String) -> Res
 }
 
 #[tauri::command]
-fn get_all_books(state: tauri::State<'_, AppState>) -> Result<Vec<BookCard>, String> {
+fn get_all_books(
+    state: tauri::State<'_, AppState>, 
+    filters: Option<Filters>,
+    limit: Option<i32>,
+    offset: Option<i32>
+) -> Result<Vec<BookCard>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
 
-    let sql = String::from("SELECT id, isbn, title, author, status, cover_url FROM books");
+    let (sql, mut args) = if let Some(ref f) = filters {
+        let (filters_query, args) = from_filters_to_query_with_args(f);
+        let query = format!("SELECT id, isbn, title, author, status, cover_url FROM books WHERE {}", filters_query);
+        (query, args)
+    } else {
+        let query = "SELECT id, isbn, title, author, status, cover_url FROM books".to_string();
+        (query, Vec::new())
+    };
+
+    let limit = match limit {
+        Some(l) => l.to_string(),
+        None => "30".to_string()
+    };
+
+    let offset = match offset {
+        Some(o) => o.to_string(),
+        None => "0".to_string()
+    };
+
+    let sql = format!("{} ORDER BY title ASC LIMIT ? OFFSET ?", sql);
+    args.push(&limit);
+    args.push(&offset);
 
     let mut stmt = conn
         .prepare(&sql)
         .map_err(|e| e.to_string())?;
 
     let book_iter = stmt
-        .query_map([], |row| {
+        .query_map(params_from_iter(args.iter()), |row| {
             Ok(BookCard {
                 id: row.get(0)?,
                 isbn: row.get(1)?,
@@ -165,7 +168,10 @@ fn get_all_books(state: tauri::State<'_, AppState>) -> Result<Vec<BookCard>, Str
 }
 
 #[tauri::command]
-fn get_id_book(state: tauri::State<'_, AppState>, id: i32) -> Result<Option<BookPage>, String> {
+fn get_id_book(
+    state: tauri::State<'_, AppState>, 
+    id: i32
+) -> Result<Option<BookPage>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
 
     let sql = String::from("SELECT * FROM books WHERE id = ?1");
@@ -194,10 +200,13 @@ fn get_id_book(state: tauri::State<'_, AppState>, id: i32) -> Result<Option<Book
 }
 
 #[tauri::command]
-fn search_parse_book(state: tauri::State<'_, AppState>, isbn: String) -> Result<BookParse, String> {
+fn search_parse_book(
+    state: tauri::State<'_, AppState>, 
+    isbn: String
+) -> Result<BookParse, String> {
     let isbn_copy = (&isbn).to_string();
     let book = select_from_isbn_book(state, isbn_copy)?;
-    if !book.is_none(){
+    if book.is_some(){
         return Err("Это книга есть в базе данных!".to_string())
     }
     let book = parse_bookvoed_book(&isbn)?;
@@ -205,7 +214,7 @@ fn search_parse_book(state: tauri::State<'_, AppState>, isbn: String) -> Result<
     Ok(book)
 }
 
-#[tauri::command(rename_all = "snake_case")]
+#[tauri::command]
 fn insert_book(
     state: tauri::State<'_, AppState>,
     isbn: String,
@@ -258,6 +267,45 @@ fn insert_book(
     Ok("Книга успешна добавлена.".to_string())
 }
 
+#[tauri::command]
+fn get_filters_params(state: tauri::State<'_, AppState>) -> Result<FiltersParams, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+
+    let params = ["status", "publisher", "series", "binding", "section"];
+    let mut results: Vec<Vec<String>> = Vec::new();
+
+    for param in params {
+        let mut stmt = conn
+        .prepare(&format!("SELECT DISTINCT {0} FROM books WHERE {0} IS NOT NULL AND {0} != '' ORDER BY {0} ASC", param))
+        .map_err(|e| e.to_string())?;
+        
+        println!("SELECT DISTINCT {} FROM books ORDER BY {} ASC", param, param);
+
+        let result = stmt
+            .query_map([], |row| {
+                let value: String = row.get(0)?; 
+                Ok(value)
+            })
+            .map_err(|e| e.to_string())?;
+
+        let column_values = result
+            .collect::<Result<Vec<String>, _>>()
+            .map_err(|e| e.to_string())?;
+
+        results.push(column_values);
+    }
+
+    Ok(
+        FiltersParams {
+            status: results.remove(0),
+            publisher: results.remove(0),
+            series: results.remove(0),
+            binding: results.remove(0),
+            section: results.remove(0)
+        }
+    )
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -298,7 +346,7 @@ pub fn run() {
             get_all_books,
             get_id_book,
             insert_book,
-            save_file_to_covers
+            get_filters_params
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
