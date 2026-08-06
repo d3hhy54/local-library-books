@@ -268,6 +268,24 @@ fn insert_book(
 }
 
 #[tauri::command]
+fn update_status_book(state: tauri::State<'_, AppState>, status: String, id: i32) -> Result<String, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+
+    let sql = "UPDATE books SET status = ? WHERE id = ?";
+
+    match conn.execute(
+        sql,
+        (
+            status, 
+            id
+        )
+    ) {
+        Ok(_) => Ok("Успешно обновлен статус!".to_string()),
+        Err(e) => Err(e.to_string())
+    }  
+}
+
+#[tauri::command]
 fn get_filters_params(state: tauri::State<'_, AppState>) -> Result<FiltersParams, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
 
@@ -346,7 +364,8 @@ pub fn run() {
             get_all_books,
             get_id_book,
             insert_book,
-            get_filters_params
+            get_filters_params,
+            update_status_book
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
