@@ -33,6 +33,21 @@ if (!tauriInvoke) {
 }
 
 // ==========================================
+// Константы для SVG (вынесено для переиспользования)
+// ==========================================
+const PLACEHOLDER_SVG = 
+  '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" fill="%2311111b">' +
+  '<rect width="200" height="300"/>' +
+  '<text x="100" y="150" text-anchor="middle" fill="%237f849c" font-size="14">Нет обложки</text>' +
+  '</svg>';
+
+const ERROR_SVG = 
+  '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" fill="%2311111b">' +
+  '<rect width="200" height="300"/>' +
+  '<text x="100" y="150" text-anchor="middle" fill="%23f38ba8" font-size="12">Ошибка загрузки</text>' +
+  '</svg>';
+
+// ==========================================
 // Утилиты
 // ==========================================
 
@@ -41,12 +56,7 @@ if (!tauriInvoke) {
  */
 function formatCoverUrl(url) {
   if (!url) {
-    return 'data:image/svg+xml,' + encodeURIComponent(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" fill="%2311111b">' +
-      '<rect width="200" height="300"/>' +
-      '<text x="100" y="150" text-anchor="middle" fill="%237f849c" font-size="14">Нет обложки</text>' +
-      '</svg>'
-    );
+    return `data:image/svg+xml,${encodeURIComponent(PLACEHOLDER_SVG)}`;
   }
 
   // Если это уже HTTP(S) или data URL — возвращаем как есть
@@ -64,12 +74,7 @@ function formatCoverUrl(url) {
   }
 
   // Фоллбек: показываем placeholder
-  return 'data:image/svg+xml,' + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" fill="%2311111b">' +
-    '<rect width="200" height="300"/>' +
-    '<text x="100" y="150" text-anchor="middle" fill="%23f38ba8" font-size="12">Ошибка загрузки</text>' +
-    '</svg>'
-  );
+  return `data:image/svg+xml,${encodeURIComponent(ERROR_SVG)}`;
 }
 
 /**
@@ -103,6 +108,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadBooks(true);
   setupIntersectionObserver();
   setupEventListeners();
+
+  // Вешаем слушатель события ввода на весь контейнер фильтров
+  if (dynamicFiltersContainer) {
+    dynamicFiltersContainer.addEventListener("input", (event) => {
+      if (event.target?.classList.contains("filter-search-input")) {
+        const inputElement = event.target;
+        const targetContainerId = inputElement.getAttribute("data-target");
+        filterOptions(inputElement, targetContainerId);
+      }
+    });
+  }
 });
 
 // ==========================================
@@ -118,7 +134,7 @@ async function initFilters() {
 }
 
 /**
- * Отрисовка групп фильтров
+ * Отрисовка групп фильтров (по умолчанию все группы СВЕРНУТЫ)
  */
 function renderFilterGroups(params) {
   if (!params) return;
@@ -126,46 +142,157 @@ function renderFilterGroups(params) {
   dynamicFiltersContainer.innerHTML = "";
 
   const groups = [
-    { key: "status", label: "Статус" },
-    { key: "publisher", label: "Издательство" },
-    { key: "series", label: "Серия" },
-    { key: "binding", label: "Переплёт" },
-    { key: "section", label: "Раздел" }
+    { key: "status", label: "Статус", hasSearch: false },
+    { key: "binding", label: "Переплёт", hasSearch: false },
+    { key: "publisher", label: "Издательство", hasSearch: true },
+    { key: "series", label: "Серия", hasSearch: true },
+    { key: "section", label: "Раздел", hasSearch: true }
   ];
 
-  groups.forEach(({ key, label }) => {
+  params.status = ["Не прочитано", "В планах", "Читаю", "Прочитано", "Брошено", "Любимые"];
+
+  groups.forEach(({ key, label, hasSearch }) => {
     const values = params[key];
     if (!values || values.length === 0) return;
 
     const groupDiv = document.createElement("div");
     groupDiv.className = "filter-group";
 
+    const searchInputHtml = hasSearch 
+      ? `<input type="text" 
+            class="filter-search-input" 
+            data-target="options-${key}" 
+            placeholder="🔍 Поиск...">`
+      : "";
+
+    // ТАУРИ-ФИКС: Полностью убрали onclick="..." и onchange="..." из строки HTML
     groupDiv.innerHTML = `
-      <div class="filter-group-title">${label}</div>
-      <div class="filter-options">
-        ${values.map(val => `
-          <label class="filter-item">
-            <input type="checkbox" 
-                   data-group="${key}" 
-                   value="${escapeHtml(val)}"
-                   ${selectedFilters[key].includes(val) ? 'checked' : ''}>
-            <span>${escapeHtml(val)}</span>
-          </label>
-        `).join('')}
+      <div class="filter-group-header">
+        <span class="filter-group-title">${label}</span>
+        <span class="filter-toggle-arrow rotated">▼</span>
+      </div>
+      <div class="filter-group-content collapsed">
+        ${searchInputHtml}
+        <div id="options-${key}" class="filter-options">
+          ${values.map(val => `
+            <label class="filter-item">
+              <input type="checkbox" 
+                     data-group="${key}" 
+                     value="${escapeHtml(val)}"
+                     ${selectedFilters[key].includes(val) ? 'checked' : ''}>
+              <span>${escapeHtml(val)}</span>
+            </label>
+          `).join('')}
+        </div>
       </div>
     `;
 
+    // ТАУРИ-ФИКС: Находим заголовок внутри созданного элемента и вешаем клик через JS
+    const header = groupDiv.querySelector(".filter-group-header");
+    header.addEventListener("click", function() {
+      toggleFilterGroup(this);
+    });
+
+    // ТАУРИ-ФИКС: Находим все чекбоксы в этой группе и вешаем событие изменения через JS
+    const checkboxes = groupDiv.querySelectorAll(`input[data-group="${key}"]`);
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener("change", function() {
+        sortActiveFiltersTop(`options-${key}`);
+      });
+    });
+
     dynamicFiltersContainer.appendChild(groupDiv);
   });
+
+  // Первичная сортировка активных элементов наверх при загрузке
+  groups.forEach(({ key }) => {
+    sortActiveFiltersTop(`options-${key}`);
+  });
+
+  // Установка display и повторная сортировка
+  groups.forEach(({ key }) => {
+    const container = document.getElementById(`options-${key}`);
+    if (container) {
+      const items = container.getElementsByClassName("filter-item");
+      for (let i = 0; i < items.length; i++) {
+        items[i].style.display = "flex";
+      }
+      sortActiveFiltersTop(`options-${key}`);
+    }
+  });
+}
+
+
+/**
+ * Сортирует чекбоксы внутри фильтра: активные наверх, неактивные вниз.
+ */
+function sortActiveFiltersTop(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const items = container.getElementsByClassName("filter-item");
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const checkbox = item.querySelector("input[type='checkbox']");
+
+    // FIX: Использовал тернарный оператор для краткости
+    item.style.order = checkbox?.checked ? "1" : "2";
+  }
+}
+
+/**
+ * Поиск по фильтрам (регистронезависимый)
+ */
+function filterOptions(inputElement, targetContainerId) {
+  const query = inputElement.value.toLowerCase().trim();
+  const container = document.getElementById(targetContainerId);
+
+  if (!container) return;
+  const items = container.getElementsByClassName("filter-item");
+
+  if (query === "") {
+    for (let i = 0; i < items.length; i++) {
+      items[i].classList.remove("hidden-by-search");
+    }
+    if (typeof sortActiveFiltersTop === "function") {
+      sortActiveFiltersTop(targetContainerId); 
+    }
+    return;
+  }
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const span = item.querySelector("span");
+    const text = span ? span.textContent.toLowerCase().trim() : "";
+
+    item.style.order = "0";
+
+    if (text.includes(query)) {
+      item.classList.remove("hidden-by-search");
+    } else {
+      item.classList.add("hidden-by-search");
+    }
+  }
+}
+
+/**
+ * Сворачивание/разворачивание группы фильтров
+ */
+function toggleFilterGroup(headerElement) {
+  const content = headerElement.nextElementSibling;
+  const arrow = headerElement.querySelector(".filter-toggle-arrow");
+
+  if (content && arrow) {
+    content.classList.toggle("collapsed");
+    arrow.classList.toggle("rotated");
+  }
 }
 
 // ==========================================
 // Формирование payload для фильтров
 // ==========================================
 
-/**
- * Возвращает объект Filters или undefined
- */
 function getActiveFiltersPayload() {
   const payload = {};
   let hasFilters = false;
@@ -184,10 +311,6 @@ function getActiveFiltersPayload() {
 // Загрузка книг
 // ==========================================
 
-/**
- * Основная функция загрузки книг
- * @param {boolean} reset - Сбросить offset и очистить сетку
- */
 async function loadBooks(reset = false) {
   if (isLoading) return;
   if (!hasMore && !reset) return;
@@ -206,23 +329,21 @@ async function loadBooks(reset = false) {
     let books = [];
 
     if (currentQuery.trim() === "") {
-      // Обычная загрузка с пагинацией
       books = await tauriInvoke("get_all_books", {
         filters: filtersPayload || null,
         limit: limit,
         offset: offset
-      });
+      }) || []; // FIX: Добавлен fallback
     } else {
-      // Поиск с пагинацией
       books = await tauriInvoke("search_by_query_book", {
         query: currentQuery.trim(),
         filters: filtersPayload || null,
         limit: limit,
         offset: offset
-      });
+      }) || []; // FIX: Добавлен fallback
     }
 
-    if (books && books.length > 0) {
+    if (books.length > 0) { // FIX: Убрал проверку books &&, т.к. теперь всегда массив
       renderBookCards(books);
       offset += limit;
       
@@ -256,9 +377,6 @@ async function loadBooks(reset = false) {
 // Отображение карточек книг
 // ==========================================
 
-/**
- * Добавляет карточки книг в сетку
- */
 function renderBookCards(books) {
   if (!books || books.length === 0) return;
 
@@ -274,7 +392,7 @@ function renderBookCards(books) {
         <img src="${formatCoverUrl(book.cover_url)}" 
              alt="${escapeHtml(book.title)}" 
              loading="lazy"
-             onerror="this.src='data:image/svg+xml,${encodeURIComponent('<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22300%22 fill=%22%2311111b%22><rect width=%22200%22 height=%22300%22/><text x=%22100%22 y=%22150%22 text-anchor=%22middle%22 fill=%22%237f849c%22 font-size=%2212%22>Ошибка</text></svg>')}'">
+             onerror="this.src='data:image/svg+xml,${encodeURIComponent(ERROR_SVG)}'">
       </div>
       <div class="card-info">
         <div>
@@ -296,9 +414,42 @@ function renderBookCards(books) {
 // Модальное окно: Детали книги
 // ==========================================
 
-/**
- * Открывает модальное окно с полной информацией о книге
- */
+async function saveStatusInline() {
+  const saveBtn = document.getElementById("save-status-btn");
+  const statusSelect = document.getElementById("status-select");
+  const statusCell = document.getElementById("detail-status");
+
+  const bookId = parseInt(saveBtn.getAttribute("data-current-book-id"));
+  const selectedStatus = statusSelect.value;
+  
+  if (!bookId) return;
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = "⏳";
+  statusSelect.disabled = true;
+
+  try {
+    await tauriInvoke("update_status_book", {
+      status: selectedStatus,
+      id: bookId
+    });
+
+    if (statusCell) {
+      statusCell.textContent = selectedStatus;
+    }
+
+    showToastNotification(`✅ Статус изменен на "${selectedStatus}"`);
+    toggleStatusEditMode(false);
+  } catch (error) {
+    console.error("Не удалось обновить статус:", error);
+    alert("Ошибка при сохранении статуса в базу данных.");
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Сохранить";
+    statusSelect.disabled = false;
+  }
+}
+
 async function openDetailsModal(id) {
   try {
     const book = await tauriInvoke("get_id_book", { id: parseInt(id) });
@@ -307,15 +458,11 @@ async function openDetailsModal(id) {
       return;
     }
 
-    // Заполняем данные
-    document.getElementById("detail-cover-img").src = formatCoverUrl(book.cover_url);
-    document.getElementById("detail-cover-img").onerror = function() {
-      this.src = 'data:image/svg+xml,' + encodeURIComponent(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" fill="%2311111b">' +
-        '<rect width="200" height="300"/>' +
-        '<text x="100" y="150" text-anchor="middle" fill="%237f849c" font-size="14">Обложка не найдена</text>' +
-        '</svg>'
-      );
+    const coverImg = document.getElementById("detail-cover-img");
+    coverImg.src = formatCoverUrl(book.cover_url);
+    // FIX: Добавлен обработчик ошибки загрузки
+    coverImg.onerror = function() {
+      this.src = `data:image/svg+xml,${encodeURIComponent(PLACEHOLDER_SVG)}`;
     };
 
     document.getElementById("detail-title").textContent = book.title || "Без названия";
@@ -323,7 +470,6 @@ async function openDetailsModal(id) {
     document.getElementById("detail-isbn").textContent = book.isbn || "—";
     document.getElementById("detail-status").textContent = book.status || "—";
 
-    // Опциональные поля
     const optionalFields = [
       { field: "publisher", rowId: "row-publisher", cellId: "detail-publisher" },
       { field: "series", rowId: "row-series", cellId: "detail-series" },
@@ -344,7 +490,13 @@ async function openDetailsModal(id) {
       }
     });
 
-    // Показываем модальное окно
+    const saveBtn = document.getElementById("save-status-btn");
+    if (saveBtn) {
+      saveBtn.setAttribute("data-current-book-id", book.id);
+    }
+
+    toggleStatusEditMode(false);
+
     document.getElementById("book-details-modal").classList.add("active");
     document.body.style.overflow = "hidden";
   } catch (err) {
@@ -357,9 +509,36 @@ async function openDetailsModal(id) {
 // Парсинг по ISBN
 // ==========================================
 
-/**
- * Обработчик кнопки "Найти в сети"
- */
+function showToastNotification(message, clickCallback = null) {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerText = message;
+  
+  if (clickCallback) {
+    toast.style.cursor = 'pointer'; 
+    toast.onclick = function() {
+      clickCallback();
+      toast.remove();
+    };
+  }
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    if (toast.parentNode) {
+      toast.remove();
+    }
+  }, 4000);
+}
+
 async function handleParseIsbn() {
   const isbnInput = document.getElementById("parse-isbn-input");
   const errorDiv = document.getElementById("parse-error");
@@ -368,7 +547,6 @@ async function handleParseIsbn() {
   const isbn = isbnInput.value.trim();
   errorDiv.textContent = "";
 
-  // Валидация
   if (!isbn) {
     errorDiv.textContent = "Введите ISBN";
     return;
@@ -378,14 +556,15 @@ async function handleParseIsbn() {
     return;
   }
 
-  // Блокируем кнопку на время запроса
   parseBtn.disabled = true;
   parseBtn.textContent = "⏳ Поиск...";
 
   try {
     const parsedData = await tauriInvoke("search_parse_book", { isbn });
     
-    // Заполняем форму
+    const addBookModal = document.getElementById('add-book-modal');
+    const isModalOpen = addBookModal?.classList.contains('active');
+
     const form = document.getElementById("add-book-form");
     const setFieldValue = (name, value) => {
       const field = form.elements[name];
@@ -402,14 +581,20 @@ async function handleParseIsbn() {
     setFieldValue("page_count", parsedData.page_count);
     setFieldValue("section", parsedData.section);
 
-    errorDiv.textContent = "";
-    errorDiv.style.color = "#a6e3a1"; // Зелёный цвет для успеха
-    errorDiv.textContent = "✅ Данные успешно загружены!";
-    setTimeout(() => {
-      errorDiv.textContent = "";
-      errorDiv.style.color = "";
-    }, 3000);
-
+    if (isModalOpen) {
+      errorDiv.style.color = "#a6e3a1"; 
+      errorDiv.textContent = "✅ Данные успешно загружены!";
+      setTimeout(() => {
+        errorDiv.textContent = "";
+        errorDiv.style.color = "";
+      }, 3000);
+    } else {
+      const bookTitle = parsedData.title || "Новая книга";
+      showToastNotification(
+        `Книга "${bookTitle}" успешно спарсена в фоне!`, 
+        () => openModal('add-book-modal')
+      );
+    }
   } catch (err) {
     errorDiv.textContent = typeof err === 'string' ? err : "Ошибка при поиске книги";
   } finally {
@@ -422,30 +607,38 @@ async function handleParseIsbn() {
 // Добавление книги
 // ==========================================
 
-/**
- * Обработчик отправки формы добавления книги
- */
 async function handleAddBookSubmit(e) {
   e.preventDefault();
   
   const formData = new FormData(e.target);
   const submitBtn = e.target.querySelector('.submit-btn');
 
-  // Собираем данные (ВАЖНО: имена полей в snake_case для Rust)
+  const pageCountRaw = formData.get('page_count');
+
+  let pageCount = null;
+  if (pageCountRaw) {
+    const digits = pageCountRaw.replace(/\D/g, '');
+    if (digits) {
+      pageCount = parseInt(digits, 10);
+    } else {
+      alert("Количество страниц должно быть числом");
+      return;
+    }
+  }
+
   const payload = {
     isbn: formData.get("isbn")?.trim(),
     title: formData.get("title")?.trim(),
     author: formData.get("author")?.trim(),
     status: formData.get("status")?.trim() || "не прочитано",
-    coverUrl: formData.get("cover_url")?.trim(),  // Rust примет как cover_url
+    coverUrl: formData.get("cover_url")?.trim(),
     publisher: formData.get("publisher")?.trim() || null,
     series: formData.get("series")?.trim() || null,
     binding: formData.get("binding")?.trim() || null,
-    pageCount: formData.get("page_count")?.trim() || null,  // Rust примет как page_count
+    pageCount: pageCount || null,
     section: formData.get("section")?.trim() || null
   };
 
-  // Валидация
   if (!payload.isbn || !payload.title || !payload.author) {
     alert("Заполните обязательные поля: ISBN, Название, Автор");
     return;
@@ -456,7 +649,6 @@ async function handleAddBookSubmit(e) {
     return;
   }
 
-  // Блокируем кнопку
   submitBtn.disabled = true;
   submitBtn.textContent = "⏳ Сохранение...";
 
@@ -464,16 +656,13 @@ async function handleAddBookSubmit(e) {
     const result = await tauriInvoke("insert_book", payload);
     alert(result || "Книга успешно добавлена!");
 
-    // Закрываем модалку и сбрасываем форму
     closeModal("add-book-modal");
     e.target.reset();
     document.getElementById("parse-isbn-input").value = "";
     document.getElementById("parse-error").textContent = "";
 
-    // Обновляем фильтры и список книг
     await initFilters();
     await loadBooks(true);
-
   } catch (err) {
     console.error("Ошибка добавления книги:", err);
     alert("Ошибка: " + (typeof err === 'string' ? err : JSON.stringify(err)));
@@ -531,7 +720,6 @@ function setupIntersectionObserver() {
 // ==========================================
 
 function setupEventListeners() {
-  // Поиск с debounce
   let debounceTimer;
   searchInput.addEventListener("input", (e) => {
     clearTimeout(debounceTimer);
@@ -541,7 +729,6 @@ function setupEventListeners() {
     }, 400);
   });
 
-  // Фильтры (делегирование событий)
   dynamicFiltersContainer.addEventListener("change", (e) => {
     if (e.target.tagName === "INPUT" && e.target.type === "checkbox") {
       const group = e.target.dataset.group;
@@ -563,7 +750,6 @@ function setupEventListeners() {
     }
   });
 
-  // Сброс фильтров
   document.getElementById("reset-filters-btn").addEventListener("click", () => {
     selectedFilters = {
       status: [],
@@ -573,19 +759,25 @@ function setupEventListeners() {
       section: []
     };
 
-    // Снимаем все чекбоксы
     const checkboxes = dynamicFiltersContainer.querySelectorAll("input[type='checkbox']");
     checkboxes.forEach(cb => cb.checked = false);
+
+    const filterSearchInputs = dynamicFiltersContainer.querySelectorAll(".filter-search-input");
+    filterSearchInputs.forEach(input => input.value = "");
+
+    const filterItems = dynamicFiltersContainer.querySelectorAll(".filter-item");
+    filterItems.forEach(item => {
+      item.classList.remove("hidden-by-search");
+      item.style.order = "0";
+    });
 
     loadBooks(true);
   });
 
-  // Открытие модалки добавления
   document.getElementById("open-add-modal-btn").addEventListener("click", () => {
     openModal("add-book-modal");
   });
 
-  // Закрытие модалок (кнопки ✕)
   document.querySelectorAll(".close-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       const modalId = btn.dataset.modal;
@@ -593,14 +785,12 @@ function setupEventListeners() {
     });
   });
 
-  // Закрытие модалок по клику на фон
   window.addEventListener("click", (e) => {
     if (e.target.classList.contains("modal")) {
       closeModal(e.target.id);
     }
   });
 
-  // Закрытие по Escape
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       document.querySelectorAll(".modal.active").forEach(modal => {
@@ -609,9 +799,29 @@ function setupEventListeners() {
     }
   });
 
-  // Кнопка парсинга ISBN
   document.getElementById("parse-btn").addEventListener("click", handleParseIsbn);
-
-  // Отправка формы добавления
   document.getElementById("add-book-form").addEventListener("submit", handleAddBookSubmit);
+
+  document.getElementById("btn-edit").addEventListener("click", () => {toggleStatusEditMode(true);});
+  document.getElementById("save-status-btn").addEventListener("click", saveStatusInline);
+}
+
+// ==========================================
+// Переключение режимов статуса
+// ==========================================
+
+function toggleStatusEditMode(isEdit) {
+  const readModeDiv = document.getElementById("status-read-mode");
+  const editModeDiv = document.getElementById("status-edit-mode");
+  const currentStatus = document.getElementById("detail-status").textContent;
+
+  if (isEdit) {
+    readModeDiv.style.display = "none";
+    editModeDiv.style.display = "flex";
+    const statusSelect = document.getElementById("status-select");
+    if (statusSelect) statusSelect.value = currentStatus;
+  } else {
+    readModeDiv.style.display = "flex";
+    editModeDiv.style.display = "none";
+  }
 }

@@ -9,8 +9,20 @@ use crate::utils::*;
 use std::fs;
 use std::sync::Mutex;
 
+use tauri::AppHandle;
 use tauri::Manager;
 use rusqlite::{OptionalExtension, Connection, Result, params_from_iter};
+
+fn book_card_from_row(row: &rusqlite::Row) -> rusqlite::Result<BookCard> {
+    Ok(BookCard {
+        id: row.get(0)?,
+        isbn: row.get(1)?,
+        title: row.get(2)?,
+        author: row.get(3)?,
+        status: row.get(4)?,
+        cover_url: row.get(5)?,
+    })
+}
 
 #[tauri::command]
 fn select_from_isbn_book(
@@ -23,17 +35,8 @@ fn select_from_isbn_book(
         .prepare("SELECT id, isbn, title, author, status, cover_url FROM books WHERE isbn = ?1")
         .map_err(|e| e.to_string())?;
 
-    let book_result = stmt.query_row([isbn], |row| {
-        Ok(BookCard {
-            id: row.get(0)?,
-            isbn: row.get(1)?,
-            title: row.get(2)?,
-            author: row.get(3)?,
-            status: row.get(4)?,
-            cover_url: row.get(5)?,
-        })
-    });
-
+    let book_result = stmt.query_row([isbn], book_card_from_row);
+    
     book_result.optional().map_err(|e| e.to_string())
 }
 
@@ -86,24 +89,13 @@ fn search_by_query_book(
         .map_err(|e| e.to_string())?;
 
     let book_iter = stmt
-        .query_map(params_from_iter(final_args.iter()), |row| {
-            Ok(BookCard {
-                id: row.get(0)?,
-                isbn: row.get(1)?,
-                title: row.get(2)?,
-                author: row.get(3)?,
-                status: row.get(4)?,
-                cover_url: row.get(5)?,
-            })
-        })
+        .query_map(params_from_iter(final_args.iter()), book_card_from_row)
         .map_err(|e| e.to_string())?;
     
     let mut books = Vec::new();
     for book in book_iter {
         books.push(book.map_err(|e| e.to_string())?);
     }
-
-    println!("{}", &sql);
     
     Ok(books)
 
@@ -147,16 +139,7 @@ fn get_all_books(
         .map_err(|e| e.to_string())?;
 
     let book_iter = stmt
-        .query_map(params_from_iter(args.iter()), |row| {
-            Ok(BookCard {
-                id: row.get(0)?,
-                isbn: row.get(1)?,
-                title: row.get(2)?,
-                author: row.get(3)?,
-                status: row.get(4)?,
-                cover_url: row.get(5)?,
-            })
-        })
+        .query_map(params_from_iter(args.iter()), book_card_from_row)
         .map_err(|e| e.to_string())?;
     
     let mut books = Vec::new();
@@ -174,7 +157,7 @@ fn get_id_book(
 ) -> Result<Option<BookPage>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
 
-    let sql = String::from("SELECT * FROM books WHERE id = ?1");
+    let sql = "SELECT * FROM books WHERE id = ?1";
 
     let mut stmt = conn
         .prepare(&sql)
@@ -200,18 +183,23 @@ fn get_id_book(
 }
 
 #[tauri::command]
-fn search_parse_book(
-    state: tauri::State<'_, AppState>, 
+async fn search_parse_book(
+    app_handle: AppHandle, 
     isbn: String
 ) -> Result<BookParse, String> {
-    let isbn_copy = (&isbn).to_string();
-    let book = select_from_isbn_book(state, isbn_copy)?;
-    if book.is_some(){
-        return Err("Это книга есть в базе данных!".to_string())
-    }
-    let book = parse_bookvoed_book(&isbn)?;
-    println!("BookParse: {:?}", book);
-    Ok(book)
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app_handle.state::<AppState>();
+
+        let isbn_copy = (&isbn).to_string();
+        let book = select_from_isbn_book(state, isbn_copy)?;
+        if book.is_some(){
+            return Err("Это книга есть в базе данных!".to_string())
+        }
+        let book = parse_bookvoed_book(&isbn)?;
+        Ok(book)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -225,14 +213,12 @@ fn insert_book(
     publisher: Option<String>,
     series: Option<String>,
     binding: Option<String>,
-    page_count: Option<String>,
+    page_count: Option<i32>,
     section: Option<String>,
 ) -> Result<String, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
 
-    let sql = String::from("INSERT INTO books (isbn, title, author, status, cover_url, publisher, series, binding, page_count, section, title_lower, author_lower) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)");
-
-    let page_count: Option<i32> = page_count.and_then(|s| s.parse().ok());
+    let sql = "INSERT INTO books (isbn, title, author, status, cover_url, publisher, series, binding, page_count, section, title_lower, author_lower) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)";
 
     let path;
     if cover_url.starts_with("data:") {
@@ -244,9 +230,8 @@ fn insert_book(
     } else {
         return Err("Не указана обложка".to_string());
     };
-    println!("PATH: {}", path);
     conn.execute(
-        &sql,
+        sql,
         (
             isbn,
             &title,
@@ -280,7 +265,9 @@ fn update_status_book(state: tauri::State<'_, AppState>, status: String, id: i32
             id
         )
     ) {
-        Ok(_) => Ok("Успешно обновлен статус!".to_string()),
+        Ok(_) => {
+            Ok("Успешно обновлен статус!".to_string())
+        },
         Err(e) => Err(e.to_string())
     }  
 }
@@ -296,8 +283,6 @@ fn get_filters_params(state: tauri::State<'_, AppState>) -> Result<FiltersParams
         let mut stmt = conn
         .prepare(&format!("SELECT DISTINCT {0} FROM books WHERE {0} IS NOT NULL AND {0} != '' ORDER BY {0} ASC", param))
         .map_err(|e| e.to_string())?;
-        
-        println!("SELECT DISTINCT {} FROM books ORDER BY {} ASC", param, param);
 
         let result = stmt
             .query_map([], |row| {

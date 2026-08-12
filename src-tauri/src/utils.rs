@@ -8,13 +8,11 @@ pub fn save_cover_from_data_url(
     data_url: &str,
     isbn: &str,
 ) -> Result<String, String> {
-    // Парсим Data URL: data:image/jpeg;base64,/9j/4AAQSkZJRg...
     let parts: Vec<&str> = data_url.split(',').collect();
     if parts.len() != 2 {
         return Err("Неверный формат Data URL".to_string());
     }
     
-    // Получаем расширение из MIME типа
     let mime_part = parts[0];
     let ext = if mime_part.contains("jpeg") || mime_part.contains("jpg") {
         "jpg"
@@ -25,15 +23,13 @@ pub fn save_cover_from_data_url(
     } else if mime_part.contains("webp") {
         "webp"
     } else {
-        "jpg" // по умолчанию
+        "jpg"
     };
     
-    // Декодируем base64
     let base64_data = parts[1];
     let decoded = BASE64_STANDARD.decode(base64_data)
         .map_err(|e| format!("Ошибка декодирования base64: {}", e))?;
     
-    // Сохраняем файл
     let mut cover_path = state.cover_path.clone();
     let filename = format!("{}.{}", isbn, ext);
     cover_path.push(&filename);
@@ -67,52 +63,6 @@ pub fn save_file_to_covers(state: tauri::State<'_, AppState>, file_path: &str, i
     
     Ok(file_name)
 }
-
-// fn make_placeholders<T>(vec: &[T]) -> String {
-//     if vec.is_empty() {
-//         return "()".to_string(); // Или пустая строка, в зависимости от логики SQL
-//     }
-//     let marks = vec!["?"; vec.len()].join(", ");
-//     format!("({})", marks)
-// }
-
-// pub fn from_filters_to_query(filters: Filters) -> String {
-//     let mut filters_query = String::new();
-
-//     if let Some(ref q) = filters.status {
-//         filters_query.push_str(&format!("status IN {}", make_placeholders(q)));
-//     }
-
-//     if let Some(ref q) = filters.publisher {
-//         if !filters_query.is_empty() {
-//             filters_query.push_str("AND ");
-//         }
-//         filters_query.push_str(&format!("publisher IN {}", make_placeholders(q)));
-//     }
-
-//     if let Some(ref q) = filters.series {
-//         if !filters_query.is_empty() {
-//             filters_query.push_str("AND ");
-//         }
-//         filters_query.push_str(&format!("series IN {}", make_placeholders(q)));
-//     }
-
-//     if let Some(ref q) = filters.binding {
-//         if !filters_query.is_empty() {
-//             filters_query.push_str("AND ");
-//         }
-//         filters_query.push_str(&format!("binding IN {}", make_placeholders(q)));
-//     }
-
-//     if let Some(ref q) = filters.section {
-//         if !filters_query.is_empty() {
-//             filters_query.push_str("AND ");
-//         }
-//         filters_query.push_str(&format!("section IN {}", make_placeholders(q)));
-//     }
-
-//     filters_query
-// }
 
 fn make_placeholders(count: usize) -> String {
     if count == 0 {
@@ -158,8 +108,6 @@ pub fn from_filters_to_query_with_args<'a>(
     add_filter!(series);
     add_filter!(binding);
     add_filter!(section);
-
-    println!("Answer: {}, {:?}", parts.join(" AND "), args);
 
     (parts.join(" AND "), args)
 }

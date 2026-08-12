@@ -1,47 +1,48 @@
 :root {
-  --bg-color: #1e1e2e;
-  --panel-bg: #252538;
-  --accent-color: #89b4fa;
-  --text-color: #cdd6f4;
-  --text-muted: #7f849c;
-  --border-color: #313244;
-  --error-color: #f38ba8;
+color-scheme: dark;
+--bg-color: #1e1e2e;
+--panel-bg: #252538;
+--accent-color: #89b4fa;
+--text-color: #cdd6f4;
+--text-muted: #7f849c;
+--border-color: #313244;
+--error-color: #f38ba8;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  height: 100vh;
-  overflow: hidden;
+font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+background-color: var(--bg-color);
+color: var(--text-color);
+height: 100vh;
+overflow: hidden;
 }
 
 .app-container {
-  display: flex;
-  height: 100vh;
+display: flex;
+height: 100vh;
 }
 
 /* Сайдбар */
 .sidebar {
-  width: 320px;
-  background-color: var(--panel-bg);
-  border-right: 1px solid var(--border-color);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  overflow-y: auto;
+width: 320px;
+background-color: var(--panel-bg);
+border-right: 1px solid var(--border-color);
+padding: 20px;
+display: flex;
+flex-direction: column;
+gap: 20px;
+overflow-y: auto;
 }
 
 .search-box input {
-  width: 100%;
-  padding: 10px;
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
-  color: var(--text-color);
-  border-radius: 6px;
+width: 100%;
+padding: 10px;
+background: var(--bg-color);
+border: 1px solid var(--border-color);
+color: var(--text-color);
+border-radius: 6px;
 }
 
 /* Фильтры */
@@ -49,41 +50,53 @@ body {
 .filter-group { margin-bottom: 15px; }
 .filter-group-title { font-weight: bold; font-size: 0.9rem; color: var(--accent-color); margin-bottom: 5px; text-transform: capitalize; }
 .filter-options { max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; padding-left: 5px; }
-.filter-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; }
+.filter-item {
+display: flex;
+align-items: center;
+gap: 8px;
+font-size: 0.85rem;
+cursor: pointer;
+}
+
+/* Добавляем точечный фикс для инпута, чтобы вернуть его на ось */
+.filter-item input[type="checkbox"] {
+margin-top: -3px !important; /* Физически притягиваем системный чекбокс чуть выше */
+margin-bottom: 0 !important;
+}
 
 /* Основной контент */
 .main-content {
-  flex: 1;
-  padding: 25px;
-  overflow-y: auto;
-  position: relative;
+flex: 1;
+padding: 25px;
+overflow-y: auto;
+position: relative;
 }
 
 .books-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 20px;
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+gap: 20px;
 }
 
 /* Карточка книги */
 .book-card {
-  background: var(--panel-bg);
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--border-color);
-  cursor: pointer;
-  transition: transform 0.2s, border-color 0.2s;
-  display: flex;
-  flex-direction: column;
+background: var(--panel-bg);
+border-radius: 8px;
+overflow: hidden;
+border: 1px solid var(--border-color);
+cursor: pointer;
+transition: transform 0.2s, border-color 0.2s;
+display: flex;
+flex-direction: column;
 }
 .book-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--accent-color);
+transform: translateY(-4px);
+border-color: var(--accent-color);
 }
 .card-img-wrapper {
-  aspect-ratio: 2/3;
-  background: #11111b;
-  overflow: hidden;
+aspect-ratio: 2/3;
+background: #11111b;
+overflow: hidden;
 }
 .card-img-wrapper img { width: 100%; height: 100%; object-fit: cover; }
 .card-info { padding: 10px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
@@ -93,38 +106,38 @@ body {
 
 /* Кнопки */
 .btn {
-  padding: 10px 15px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  background: var(--border-color);
-  color: var(--text-color);
+padding: 10px 15px;
+border: none;
+border-radius: 6px;
+cursor: pointer;
+font-weight: 600;
+background: var(--border-color);
+color: var(--text-color);
 }
 .btn-primary { background: var(--accent-color); color: #11111b; }
-.btn-secondary { width: 100%; margin-top: 10px; font-size: 0.85rem; }
+.btn-secondary { width: 100%; margin-bottom: 10px; font-size: 0.85rem; }
 
 /* Бесконечный скролл */
 .loading-trigger { text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem; width: 100%; }
 
 /* Модальные окна */
 .modal {
-  display: none;
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.7);
-  z-index: 1000;
-  align-items: center; justify-content: center;
+display: none;
+position: fixed;
+top: 0; left: 0; width: 100%; height: 100%;
+background: rgba(0,0,0,0.7);
+z-index: 1000;
+align-items: center; justify-content: center;
 }
 .modal.active { display: flex; }
 .modal-content {
-  background: var(--panel-bg);
-  padding: 25px;
-  border-radius: 12px;
-  max-width: 600px; width: 90%;
-  max-height: 85vh; overflow-y: auto;
-  position: relative;
-  border: 1px solid var(--border-color);
+background: var(--panel-bg);
+padding: 25px;
+border-radius: 12px;
+max-width: 600px; width: 90%;
+max-height: 85vh; overflow-y: auto;
+position: relative;
+border: 1px solid var(--border-color);
 }
 .close-btn { position: absolute; top: 15px; right: 20px; font-size: 1.8rem; cursor: pointer; color: var(--text-muted); }
 .close-btn:hover { color: var(--text-color); }
@@ -147,3 +160,251 @@ body {
 .parse-section { display: flex; gap: 10px; margin-top: 15px; }
 .parse-section input { flex: 1; padding: 8px; background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 4px; }
 .error-msg { color: var(--error-color); font-size: 0.85rem; margin-top: 5px; }
+
+/* Container для уведомлений в углу экрана */
+.toast-container {
+position: fixed;
+bottom: 25px;
+right: 25px;
+z-index: 2000;
+display: flex;
+flex-direction: column;
+gap: 12px;
+}
+
+/* Сама плашка Toast — теперь МАКСИМАЛЬНО ЗАМЕТНАЯ */
+.toast {
+/* Берем ваш яркий синий цвет на фон */
+background-color: var(--accent-color);
+/* Текст делаем очень темным (цвет #11111b из вашей вёрстки карточек) */
+color: #11111b;
+padding: 14px 22px;
+border-radius: 8px;
+font-size: 0.95rem;
+font-weight: 600; /* Делаем текст жирнее */
+
+/* Мощная, размытая тень для создания эффекта глубины */
+box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 1px 3px rgba(0, 0, 0, 0.2);
+
+min-width: 280px;
+max-width: 380px;
+border: 1px solid rgba(255, 255, 255, 0.2); /* Тонкая светлая рамка для объема */
+
+/* Эффектная пружинящая анимация */
+animation: toastPopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Анимация: уведомление вылетает снизу, слегка увеличивается и пружинит */
+@keyframes toastPopIn {
+0% {
+transform: translateY(40px) scale(0.8);
+opacity: 0;
+}
+70% {
+transform: translateY(-4px) scale(1.02); /* Легкий перелет вверх */
+}
+100% {
+transform: translateY(0) scale(1);
+opacity: 1;
+}
+}
+
+/* Стилизация выпадающего списка */
+/* Обновленный выпадающий список */
+.status-dropdown {
+padding: 4px 24px 4px 8px; /* Добавляем отступ справа под стрелочку */
+background-color: var(--bg-color); /* Темный фон */
+color: var(--text-color); /* Светлый текст */
+border: 1px solid var(--border-color);
+border-radius: 6px;
+font-size: 0.85rem;
+font-weight: 600;
+cursor: pointer;
+outline: none;
+min-width: 140px;
+transition: border-color 0.2s;
+
+/* ХИТРОСТЬ 1: Отключаем дефолтную системную стрелочку ОС */
+-webkit-appearance: none;
+-moz-appearance: none;
+appearance: none;
+
+/* ХИТРОСТЬ 2: Рисуем свою кастомную стрелочку с помощью SVG */
+background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://w3.org' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23cdd6f4' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+background-repeat: no-repeat;
+background-position: right 8px center; /* Выравниваем стрелочку справа */
+}
+
+/* Подсветка рамки при фокусе */
+.status-dropdown:focus {
+border-color: var(--accent-color);
+}
+
+/* ХИТРОСТЬ 3: Принудительно красим выпадающие пункты */
+.status-dropdown option {
+background-color: var(--panel-bg) !important; /* Цвет панелей Catppuccin */
+color: var(--text-color) !important; /* Светлый текст */
+padding: 8px;
+}
+
+/* Подсветка при наведении или фокусе */
+.status-dropdown:focus, .status-dropdown:hover {
+border-color: var(--accent-color);
+}
+
+/* Стилизация выпадающих пунктов (для некоторых ОС) */
+.status-dropdown option {
+background-color: var(--panel-bg);
+color: var(--text-color);
+}
+
+/* Поисковая строка внутри фильтров сайдбара */
+.filter-search-input {
+width: 100%;
+padding: 6px 10px;
+margin-top: 4px;
+margin-bottom: 8px;
+background: var(--bg-color); /* Темный фон из :root */
+border: 1px solid var(--border-color);
+color: var(--text-color);
+border-radius: 4px;
+font-size: 0.8rem;
+outline: none;
+transition: border-color 0.2s;
+}
+
+/* Эффект фокуса при клике */
+.filter-search-input:focus {
+border-color: var(--accent-color); /* Наш фирменный синий цвет */
+}
+
+/* Делаем заголовок группы интерактивным */
+.filter-group-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+cursor: pointer;
+padding: 6px 0;
+user-select: none;
+}
+
+.filter-group-header:hover .filter-group-title {
+color: var(--accent-color); /* Подсветка текста при наведении */
+}
+
+/* Стили иконки стрелочки */
+.filter-toggle-arrow {
+font-size: 0.75rem;
+color: var(--text-muted);
+transition: transform 0.2s ease; /* Плавный поворот */
+}
+
+/* Класс для развернутой стрелочки (по умолчанию смотрим вниз, при повороте меняем) */
+.filter-toggle-arrow.rotated {
+transform: rotate(-90deg); /* Разворачиваем стрелочку влево/вправо при закрытии */
+}
+
+/* Контейнер с содержимым фильтра */
+.filter-group-content {
+max-height: 200px; /* Ограничиваем максимальную высоту для плавности анимации */
+overflow: hidden;
+transition: max-height 0.25s ease-out, opacity 0.2s ease-out;
+opacity: 1;
+}
+
+/* Класс СОСТОЯНИЯ: Свернуто. Схлопываем высоту и прозрачность в ноль */
+.filter-group-content.collapsed {
+max-height: 0;
+opacity: 0;
+pointer-events: none; /* Отключаем клики по скрытым чекбоксам */
+}
+
+/* Контейнер с содержимым фильтра — теперь без анимаций */
+.filter-group-content {
+display: block; /* По умолчанию развернут */
+}
+
+/* Состояние: Свернуто. Мгновенно убираем из разметки */
+.filter-group-content.collapsed {
+display: none;
+}
+
+/* Иконка стрелочки — тоже переключается мгновенно */
+.filter-toggle-arrow {
+font-size: 0.75rem;
+color: var(--text-muted);
+display: inline-block;
+transform: rotate(0deg); /* Развернут: стрелка вниз */
+}
+
+/* Закрытое состояние: стрелка смотрит вправо */
+.filter-toggle-arrow.rotated {
+transform: rotate(-90deg);
+}
+
+/* 1. Стираем нативный рендер операционной системы */
+.filter-item input[type="checkbox"] {
+-webkit-appearance: none !important;
+-moz-appearance: none !important;
+appearance: none !important;
+
+/* Задаем четкие размеры кубика */
+width: 14px !important;
+height: 14px !important;
+
+/* Красим в цвет темы (глубокий темный фон и рамка) */
+background-color: var(--bg-color) !important;
+border: 1px solid var(--border-color) !important;
+border-radius: 4px !important;
+
+/* Центрируем галочку внутри кубика */
+display: inline-flex !important;
+align-items: center !important;
+justify-content: center !important;
+position: relative !important;
+margin: 0 !important; /* Обнуляем системные отступы */
+flex-shrink: 0 !important;
+cursor: pointer !important;
+transition: background-color 0.15s, border-color 0.15s;
+}
+
+/* 2. Подсветка рамки при наведении на строку */
+.filter-item:hover input[type="checkbox"] {
+border-color: var(--accent-color) !important;
+}
+
+/* 3. Состояние, когда галочка НАЖАТА */
+.filter-item input[type="checkbox"]:checked {
+background-color: var(--accent-color) !important; /* Наш фирменный синий фон */
+border-color: var(--accent-color) !important;
+}
+
+/* 4. Рисуем саму «птичку» внутри кубика при состоянии :checked */
+.filter-item input[type="checkbox"]:checked::before {
+content: "✓" !important;
+color: #11111b !important; /* Угольно-темный цвет птички для контраста на синем */
+font-size: 11px !important;
+font-weight: 900 !important;
+position: absolute !important;
+line-height: 1 !important;
+}
+
+/* 5. Выравниваем всю строку (контейнер) строго по центру */
+.filter-item {
+display: flex !important;
+align-items: center !important; /* Теперь центровка сработает идеально! */
+gap: 10px !important;
+font-size: 0.85rem;
+cursor: pointer;
+line-height: 1 !important;
+}
+
+/* Принудительно скрываем то, что отфильтровал поиск */
+.filter-item.hidden-by-search {
+display: none !important;
+}
+
+/* Принудительно показываем во флексе всё остальное, перебивая display: none от ИИ */
+.filter-item {
+display: inline-flex !important;
+}

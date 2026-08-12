@@ -7,50 +7,37 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Node.js & Frontend dependencies/builds
+node_modules/
+dist/
+dist-ssr/
+build/
+.svelte-kit/
+.next/
+
+# Rust & Tauri artifacts
+/target/
+src-tauri/target/
+src-tauri/gen/
+
+# Environment and Secrets
+.env
+.env.*
+*.key
+*.pem
 *.local
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Rust
-/target/
-# Cargo.lock можно убрать, если решишь его не коммитить
-
-# Node.js
-node_modules/
-
-# Tauri
-src-tauri/gen/
-src-tauri/target/
-
-# Сборка фронтенда
-dist/
-build/
-
-# Секреты и настройки
-.env
-.env.*
-*.key
-*.pem
-
-# Системные файлы
+# System files
 .DS_Store
 Thumbs.db
-
-# Настройки редакторов
-.vscode/
-.idea/
-
-# direnv
-.direnv
+.direnv/
