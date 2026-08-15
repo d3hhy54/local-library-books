@@ -31,9 +31,7 @@
 git clone https://github.com/d3hhy54/local-library-books.git
 cd local-library-books
 nix-shell
-# Устанавливаем фронтенд-зависимости и собираем проект
-npm install
-npx tauri build
+cargo tauri build
 ```
 
 ### macOS
