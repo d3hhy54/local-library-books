@@ -11,9 +11,17 @@
 - **Оптимизация на уровне SQL**: База данных спроектирована под большие объемы данных. Грамотное использование индексов и выделение отдельных колонок для авторов и названий в нижнем регистре (lowercase) гарантирует молниеносную скорость работы.
 
 # Скриншоты
-![Главное меню](./screenshots/main_page.png)
-![Окно добавления книги](./screenshots/modal_page_add.png)
-![Просмотр деталей книги](./screenshots/modal_page_details.png)
+<details>
+<summary>📸 Нажмите, чтобы посмотреть скриншоты интерфейса</summary>
+
+<br/>
+<img src="./screenshots/main_page.png" width="600" alt="Главное меню" />
+<br/><br/>
+<img src="./screenshots/modal_page_add.png" width="600" alt="Окно добавления книги" />
+<br/><br/>
+<img src="./screenshots/modal_page_details.png" width="600" alt="Просмотр деталей книги" />
+
+</details>
 
 # Установка и сборка
 
