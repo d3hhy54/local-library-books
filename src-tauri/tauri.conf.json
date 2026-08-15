@@ -1,6 +1,6 @@
 {
   "$schema": "https://tauri/app",
-  "productName": "local-library-books",
+  "productName": "Библиотека книг",
   "version": "1.0.0",
   "identifier": "com.d3hhy54.local-library-books",
   "build": {
